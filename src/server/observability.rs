@@ -2,16 +2,27 @@ use axum_prometheus::PrometheusMetricLayer;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tokio::time;
-use sysinfo::{Pid, ProcessRefreshKind, RefreshKind, System};
+use sysinfo::{Pid, RefreshKind, System};
 use prometheus::{Encoder, Gauge, Opts, Registry, TextEncoder};
+
+// OpenTelemetry metrics
+use opentelemetry::global;
+use opentelemetry_prometheus::PrometheusExporter;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
 
 static PROCESS_REGISTRY: OnceLock<Registry> = OnceLock::new();
 static CPU_USAGE_GAUGE: OnceLock<Gauge> = OnceLock::new();
 static MEMORY_RSS_GAUGE: OnceLock<Gauge> = OnceLock::new();
 static MEMORY_VMS_GAUGE: OnceLock<Gauge> = OnceLock::new();
 
+// OpenTelemetry Prometheus registry for standard metrics
+static OTEL_REGISTRY: OnceLock<Registry> = OnceLock::new();
+
 pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus::Handle) {
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
+
+    // Initialize OpenTelemetry metrics with Prometheus exporter (standard metrics)
+    setup_otel_metrics();
 
     let registry = PROCESS_REGISTRY.get_or_init(Registry::new);
 
@@ -78,9 +89,7 @@ pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus
     if let Some(g) = vms_gauge_opt.clone() { MEMORY_VMS_GAUGE.set(g).ok(); }
 
     tokio::spawn(async move {
-        let mut sys = System::new_with_specifics(
-            RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-        );
+        let mut sys = System::new_with_specifics(RefreshKind::everything());
 
         let pid = Pid::from_u32(std::process::id());
 
@@ -88,7 +97,7 @@ pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus
         loop {
             interval.tick().await;
 
-            sys.refresh_processes_specifics(ProcessRefreshKind::everything());
+            sys.refresh_all();
 
             if let Some(proc_) = sys.process(pid) {
                 let cpu_pct = proc_.cpu_usage() as f64;
@@ -139,6 +148,24 @@ pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus
     (prometheus_layer, axum_prometheus::Handle(metric_handle))
 }
 
+fn setup_otel_metrics() {
+    // Ensure we only set up once
+    let registry = OTEL_REGISTRY.get_or_init(Registry::new).clone();
+
+    // Build Prometheus exporter backed by our registry
+    let exporter: PrometheusExporter = opentelemetry_prometheus::exporter()
+        .with_registry(registry.clone())
+        .build()
+        .expect("build otel prometheus exporter");
+
+    // Build and install MeterProvider (no instruments registered here to keep build stable across API changes)
+    let provider: SdkMeterProvider = SdkMeterProvider::builder()
+        .with_reader(exporter)
+        .build();
+
+    global::set_meter_provider(provider);
+}
+
 pub fn render_process_metrics() -> String {
     let registry = PROCESS_REGISTRY
         .get()
@@ -148,6 +175,20 @@ pub fn render_process_metrics() -> String {
     let encoder = TextEncoder::new();
     if let Err(e) = encoder.encode(&metric_families, &mut buffer) {
         eprintln!("Failed to encode process metrics: {e}");
+    }
+    String::from_utf8(buffer).unwrap_or_default()
+}
+
+pub fn render_otel_metrics() -> String {
+    let registry = match OTEL_REGISTRY.get() {
+        Some(r) => r,
+        None => return String::new(),
+    };
+    let metric_families = registry.gather();
+    let mut buffer = Vec::new();
+    let encoder = TextEncoder::new();
+    if let Err(e) = encoder.encode(&metric_families, &mut buffer) {
+        eprintln!("Failed to encode OpenTelemetry metrics: {e}");
     }
     String::from_utf8(buffer).unwrap_or_default()
 }

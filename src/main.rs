@@ -1,6 +1,7 @@
 use axum::Router;
-use rust_observability::server::observability::{render_process_metrics, setup_observability};
+use rust_observability::server::observability::{render_process_metrics, render_otel_metrics, setup_observability};
 use std::time::{SystemTime, UNIX_EPOCH};
+use rust_observability::server::graceful_shutdown::graceful_shutdown;
 
 #[tokio::main]
 async fn main() {
@@ -18,13 +19,14 @@ async fn main() {
 
                 let http_metrics = metric_handle.0.render();
                 let process_metrics = render_process_metrics();
-                if http_metrics.is_empty() {
-                    process_metrics
-                } else if process_metrics.is_empty() {
-                    http_metrics
-                } else {
-                    format!("{}\n{}", http_metrics, process_metrics)
-                }
+                let otel_metrics = render_otel_metrics();
+
+                // Concatenate all non-empty groups
+                let mut parts = Vec::new();
+                if !http_metrics.is_empty() { parts.push(http_metrics); }
+                if !process_metrics.is_empty() { parts.push(process_metrics); }
+                if !otel_metrics.is_empty() { parts.push(otel_metrics); }
+                parts.join("\n")
             }),
         )
         .layer(prometheus_layer);
@@ -32,9 +34,11 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await
         .unwrap();
-    println!(
-        "Metrics server listening on {}",
-        listener.local_addr().unwrap()
-    );
-    axum::serve(listener, app).await.unwrap();
+
+    println!("Metrics server listening on {}", listener.local_addr().unwrap());
+    println!("Server can be stopped by CTRL-C");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(graceful_shutdown())
+        .await
+        .unwrap();
 }
