@@ -12,3 +12,5 @@ opentelemetry-prometheus = "0.29.1"
 prometheus = "0.14.0"
 sysinfo = { version = "0.37.0", default-features = false, features = ["system"] }
 tokio = { version = "1.47.1", features = ["full"] }
+rand = "0.8"
+tracing = "0.1"

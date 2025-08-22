@@ -1,5 +1,6 @@
 use axum::Router;
 use rust_observability::server::observability::{render_process_metrics, render_otel_metrics, setup_observability};
+use rust_observability::api;
 use std::time::{SystemTime, UNIX_EPOCH};
 use rust_observability::server::graceful_shutdown::graceful_shutdown;
 
@@ -8,6 +9,7 @@ async fn main() {
     let (prometheus_layer, metric_handle) = setup_observability();
     
     let app = Router::new()
+        .merge(api::router())
         .route(
             "/metrics",
             axum::routing::get(move || async move {
