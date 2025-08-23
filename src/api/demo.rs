@@ -41,5 +41,5 @@ pub async fn handler() -> impl IntoResponse {
 
     info!(delay_ms, status = status.as_u16(), "Handled /api/demo");
 
-    (status, format!("demo: {} ms\n", delay_ms))
+    (status, format!("demo: {delay_ms} ms\n"))
 }

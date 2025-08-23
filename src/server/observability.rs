@@ -106,41 +106,39 @@ pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus
                 }
 
                 // sysinfo >= 0.30 returns memory in bytes already
-                let rss_bytes = proc_.memory() as u64;
+                let rss_bytes = proc_.memory();
                 if let Some(g) = MEMORY_RSS_GAUGE.get() {
                     g.set(rss_bytes as f64);
                 }
 
                 // Virtual memory size in bytes
-                let mut vms_bytes_opt: Option<u64> = None;
+                let mut _vms_bytes_opt: Option<u64> = None;
                 if MEMORY_VMS_GAUGE.get().is_some() {
-                    let v = proc_.virtual_memory() as u64;
+                    let v = proc_.virtual_memory();
                     if let Some(g) = MEMORY_VMS_GAUGE.get() { g.set(v as f64); }
-                    vms_bytes_opt = Some(v);
+                    _vms_bytes_opt = Some(v);
                 }
 
                 #[cfg(debug_assertions)]
                 {
                     let rss_mib = (rss_bytes as f64) / (1024.0 * 1024.0);
-                    match vms_bytes_opt {
+                    match _vms_bytes_opt {
                         Some(vms_bytes) => {
                             let vms_mib = (vms_bytes as f64) / (1024.0 * 1024.0);
                             println!(
-                                "Process metrics => CPU: {:.2}% | RSS: {} bytes ({:.2} MiB) | VMS: {} bytes ({:.2} MiB)",
-                                cpu_pct, rss_bytes, rss_mib, vms_bytes, vms_mib
+                                "Process metrics => CPU: {cpu_pct:.2}% | RSS: {rss_bytes} bytes ({rss_mib:.2} MiB) | VMS: {vms_bytes} bytes ({vms_mib:.2} MiB)"
                             );
                         }
                         None => {
                             println!(
-                                "Process metrics => CPU: {:.2}% | RSS: {} bytes ({:.2} MiB) | VMS: disabled (set RUST_OBSERVABILITY_VMS=1 to enable)",
-                                cpu_pct, rss_bytes, rss_mib
+                                "Process metrics => CPU: {cpu_pct:.2}% | RSS: {rss_bytes} bytes ({rss_mib:.2} MiB) | VMS: disabled (set RUST_OBSERVABILITY_VMS=1 to enable)"
                             );
                         }
                     }
                 }
             } else {
                 #[cfg(debug_assertions)]
-                eprintln!("Could not find current process info for PID {}", pid);
+                eprintln!("Could not find current process info for PID {pid}");
             }
         }
     });

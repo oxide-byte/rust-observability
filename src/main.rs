@@ -21,7 +21,7 @@ async fn main() {
                     .duration_since(UNIX_EPOCH)
                     .map(|d| d.as_secs_f64())
                     .unwrap_or(0.0);
-                println!("[scrape] /metrics requested at unix_ts={:.3}", ts);
+                println!("[scrape] /metrics requested at unix_ts={ts:.3}");
 
                 let http_metrics = metric_handle.0.render();
                 let process_metrics = render_process_metrics();
