@@ -1,4 +1,6 @@
+use std::process;
 use tracing::Event;
+use tracing_loki::url::Url;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*, registry::LookupSpan};
 use tracing_subscriber::fmt::{format::{DefaultFields, FormatEvent, FormatFields, Writer}, FmtContext};
 
@@ -40,12 +42,20 @@ pub fn init_tracing_logging() {
     let default_format = fmt::format().compact();
     let app_format = AppIdWrapper::new(default_format, "rust-observability");
 
+    let (loki_layer, task) = tracing_loki::builder()
+        .label("host", "rust-observability-host").unwrap()
+        .extra_field("pid", format!("{}", process::id())).unwrap()
+        .build_url(Url::parse("http://loki:3100").unwrap()).unwrap();
+
     let fmt_layer = fmt::layer()
         .fmt_fields(DefaultFields::new())
         .event_format(app_format);
 
     tracing_subscriber::registry()
         .with(env_filter)
+        .with(loki_layer)
         .with(fmt_layer)
         .init();
+
+    tokio::spawn(task);
 }

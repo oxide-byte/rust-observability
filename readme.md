@@ -48,11 +48,14 @@ flowchart LR
     G[Grafana]
   end
 
-  %% Logs flow
+  %% Logs flow (1)
   A -- stdout logs --> D
   D -- tail --> PT
   PT -- push /loki/api/v1/push --> L
   G -- query (Loki datasource) --> L
+
+  %% Logs flow (2)
+  A -- push (tracing-loki) --> L
 
   %% Metrics flow
   A -- scrape /metrics --> PR
@@ -62,7 +65,8 @@ flowchart LR
 ```
 
 Notes:
-- Promtail collects logs from Docker JSON log files and pushes them to Loki. Loki does not pull logs from the app.
+- Promtail collects logs from Docker JSON log files and pushes them to Loki. Loki does not pull logs from the app. (Solution 1)
+- Cargo tracing-loki, declare appender, push to Loki (Solution 2)
 - Prometheus scrapes metrics from the app, Promtail, and Loki; logs are not stored in Prometheus.
 - Grafana uses the Loki datasource for logs and the Prometheus datasource for metrics.
 

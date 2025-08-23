@@ -14,4 +14,5 @@ sysinfo = { version = "0.37.0", default-features = false, features = ["system"] 
 tokio = { version = "1.47.1", features = ["full"] }
 rand = "0.8"
 tracing = "0.1"
+tracing-loki = "0.2.6"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
