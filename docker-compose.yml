@@ -6,6 +6,32 @@ services:
       - "8080:8080"
     environment:
       - RUST_OBSERVABILITY_VMS=1
+      - RUST_LOG=info
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:2.9.7
+    container_name: loki
+    command: ["-config.file=/etc/loki/config/loki-config.yml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/config/loki-config.yml:ro
+      - loki_data:/loki
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:2.9.7
+    container_name: promtail
+    command: ["-config.file=/etc/promtail/config/promtail-config.yml"]
+    volumes:
+      - ./loki/promtail-config.yml:/etc/promtail/config/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
     networks:
       - monitoring
 
@@ -22,6 +48,8 @@ services:
       - '--log.level=debug'
     depends_on:
       - rust-observability
+      - promtail
+      - loki
     networks:
       - monitoring
 
@@ -38,12 +66,14 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - prometheus
+      - loki
     networks:
       - monitoring
 
 volumes:
   prometheus_data: {}
   grafana_data: {}
+  loki_data: {}
 
 networks:
   monitoring:

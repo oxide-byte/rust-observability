@@ -10,3 +10,12 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ['rust-observability:8080']
+
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['promtail:9080']
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+    metrics_path: /metrics

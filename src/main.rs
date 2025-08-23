@@ -3,9 +3,13 @@ use rust_observability::server::observability::{render_process_metrics, render_o
 use rust_observability::api;
 use std::time::{SystemTime, UNIX_EPOCH};
 use rust_observability::server::graceful_shutdown::graceful_shutdown;
+use rust_observability::server::tracing::init_tracing_logging;
 
 #[tokio::main]
 async fn main() {
+    // Initialize structured logging for tracing (logs are NOT sent to Prometheus; they go to stdout)
+    init_tracing_logging();
+
     let (prometheus_layer, metric_handle) = setup_observability();
     
     let app = Router::new()

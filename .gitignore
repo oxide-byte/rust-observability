@@ -3,3 +3,6 @@
 *.iml
 
 /target
+
+# MAC
+.DS_Store
