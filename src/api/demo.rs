@@ -24,11 +24,11 @@ pub async fn handler() -> impl IntoResponse {
     let start = Instant::now();
 
     // random delay between 300ms and 800ms
-    let delay_ms: u64 = rand::thread_rng().gen_range(300..=800);
+    let delay_ms: u64 = rand::rng().random_range(300..=800);
     sleep(Duration::from_millis(delay_ms)).await;
 
     // coin flip for status
-    let forbidden = rand::thread_rng().gen_bool(0.5);
+    let forbidden = rand::rng().random_bool(0.5);
     let status = if forbidden { StatusCode::FORBIDDEN } else { StatusCode::OK };
 
     let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;

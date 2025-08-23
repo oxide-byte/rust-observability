@@ -8,6 +8,10 @@ A small Screenshot the observed service in Grafana:
 
 ![alt text](doc/images/sample.png "sample")
 
+```text
+INFO: Still experimenting with different Cargo Libraries
+```
+
 ## Links
 
 The current links available by the application:
