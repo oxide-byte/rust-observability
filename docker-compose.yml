@@ -60,6 +60,7 @@ services:
       - "3000:3000"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     environment:
       # Use a more secure password in production

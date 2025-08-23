@@ -1,26 +1,41 @@
 # Observability
 
+## Introduction
+
+A service that is not observed, is lost in the universe of distributed systems. This POC-project is a small sample to show how keep track on your Rust Service, build on Axum. The Service and all the infrastructure is dockerized, you can simply start up all with "docker-compose up"
+
+A small Screenshot the observed service in Grafana:
+
+![alt text](doc/images/sample.png "sample")
+
 ## Links
 
-Server: http://127.0.0.1:8080/
+The current links available by the application:
 
-API: http://127.0.0.1:8080/api/demo
+The Rust Service:
 
-METRICS: http://127.0.0.1:8080/metrics
+* Hosted on port 8080: http://127.0.0.1:8080/
+* API: http://127.0.0.1:8080/api/demo for generating log entries
+* Metrics: http://127.0.0.1:8080/metrics for collecting the current metrics of the Rust Service
 
-Prometheus: http://127.0.0.1:9090/
+Prometheus: 
 
-Grafana: http://127.0.0.1:3000/
+* http://127.0.0.1:9090/
 
-See Loki API: https://grafana.com/docs/loki/latest/reference/loki-http-api/
+Grafana: 
 
-## Logs (Loki URLs)
-- Instant log query (HTTP):
-  - http://127.0.0.1:3100/loki/api/v1/query?query={job="docker-logs"}
-- Range log query (HTTP):
+* http://127.0.0.1:3000/
+
+Loki: 
+
+* A simple query on Loki: http://127.0.0.1:3100/loki/api/v1/query?query={job="docker-logs"}
+
+* A query with a range option:
   - http://127.0.0.1:3100/loki/api/v1/query_range?query={job="docker-logs"}&limit=1000&direction=backward&start=<rfc3339_or_unix_ns>&end=<rfc3339_or_unix_ns>
 
 ## Architecture: Logs and Metrics Flow
+
+A little Flowchart for illustrating how the different logs are collected and transmitted to the different systems:
 
 ```mermaid
 flowchart LR
@@ -52,6 +67,8 @@ Notes:
 - Grafana uses the Loki datasource for logs and the Prometheus datasource for metrics.
 
 ## Docker-Compose
+
+Starting the application:
 
 ```shell
 docker-compose up
