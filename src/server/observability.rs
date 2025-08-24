@@ -1,10 +1,10 @@
+use prometheus::{Encoder, Gauge, Opts, Registry, TextEncoder};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
-use tokio::time;
 use sysinfo::{Pid, RefreshKind, System};
-use prometheus::{Encoder, Gauge, Opts, Registry, TextEncoder};
+use tokio::time;
 
-use axum::{response::Response, middleware::Next};
+use axum::{middleware::Next, response::Response};
 
 use opentelemetry::{global, KeyValue};
 use opentelemetry_prometheus::PrometheusExporter;
@@ -48,10 +48,12 @@ pub fn setup_observability() {
     let enable_vms = {
         #[cfg(target_os = "macos")]
         {
-            std::env::var("RUST_OBSERVABILITY_VMS").map(|v| {
-                let v = v.trim();
-                v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("on")
-            }).unwrap_or(false)
+            std::env::var("RUST_OBSERVABILITY_VMS")
+                .map(|v| {
+                    let v = v.trim();
+                    v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("on")
+                })
+                .unwrap_or(false)
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -85,7 +87,9 @@ pub fn setup_observability() {
 
     CPU_USAGE_GAUGE.set(cpu_gauge).ok();
     MEMORY_RSS_GAUGE.set(rss_gauge).ok();
-    if let Some(g) = vms_gauge_opt.clone() { MEMORY_VMS_GAUGE.set(g).ok(); }
+    if let Some(g) = vms_gauge_opt.clone() {
+        MEMORY_VMS_GAUGE.set(g).ok();
+    }
 
     tokio::spawn(async move {
         let mut sys = System::new_with_specifics(RefreshKind::everything());
@@ -112,7 +116,9 @@ pub fn setup_observability() {
                 let mut _vms_bytes_opt: Option<u64> = None;
                 if MEMORY_VMS_GAUGE.get().is_some() {
                     let v = proc_.virtual_memory();
-                    if let Some(g) = MEMORY_VMS_GAUGE.get() { g.set(v as f64); }
+                    if let Some(g) = MEMORY_VMS_GAUGE.get() {
+                        g.set(v as f64);
+                    }
                     _vms_bytes_opt = Some(v);
                 }
 
@@ -152,9 +158,7 @@ fn setup_otel_metrics() {
         .expect("build otel prometheus exporter");
 
     // Build and install MeterProvider (no instruments registered here to keep build stable across API changes)
-    let provider: SdkMeterProvider = SdkMeterProvider::builder()
-        .with_reader(exporter)
-        .build();
+    let provider: SdkMeterProvider = SdkMeterProvider::builder().with_reader(exporter).build();
 
     global::set_meter_provider(provider);
 }
@@ -173,7 +177,10 @@ fn init_http_instruments() {
     let _ = HTTP_REQ_HIST_MS.set(hist);
 }
 
-pub async fn http_metrics_middleware(req: axum::http::Request<axum::body::Body>, next: Next) -> Response {
+pub async fn http_metrics_middleware(
+    req: axum::http::Request<axum::body::Body>,
+    next: Next,
+) -> Response {
     let start = Instant::now();
     let method = req.method().as_str().to_owned();
     // Using raw path; matched route templates aren't available at this layer without extra setup
@@ -182,19 +189,25 @@ pub async fn http_metrics_middleware(req: axum::http::Request<axum::body::Body>,
     let status = res.status().as_u16();
 
     if let Some(c) = HTTP_REQ_COUNTER.get() {
-        c.add(1, &[
-            KeyValue::new("method", method.clone()),
-            KeyValue::new("path", path.clone()),
-            KeyValue::new("status", status.to_string()),
-        ]);
+        c.add(
+            1,
+            &[
+                KeyValue::new("method", method.clone()),
+                KeyValue::new("path", path.clone()),
+                KeyValue::new("status", status.to_string()),
+            ],
+        );
     }
     if let Some(h) = HTTP_REQ_HIST_MS.get() {
         let ms = start.elapsed().as_secs_f64() * 1000.0;
-        h.record(ms, &[
-            KeyValue::new("method", method),
-            KeyValue::new("path", path),
-            KeyValue::new("status", status.to_string()),
-        ]);
+        h.record(
+            ms,
+            &[
+                KeyValue::new("method", method),
+                KeyValue::new("path", path),
+                KeyValue::new("status", status.to_string()),
+            ],
+        );
     }
 
     res

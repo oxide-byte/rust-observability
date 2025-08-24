@@ -1,8 +1,11 @@
 use std::process;
 use tracing::Event;
 use tracing_loki::url::Url;
-use tracing_subscriber::{EnvFilter, fmt, prelude::*, registry::LookupSpan};
-use tracing_subscriber::fmt::{format::{DefaultFields, FormatEvent, FormatFields, Writer}, FmtContext};
+use tracing_subscriber::fmt::{
+    format::{DefaultFields, FormatEvent, FormatFields, Writer},
+    FmtContext,
+};
+use tracing_subscriber::{fmt, prelude::*, registry::LookupSpan, EnvFilter};
 
 struct AppIdWrapper<F> {
     inner: F,
@@ -10,7 +13,9 @@ struct AppIdWrapper<F> {
 }
 
 impl<F> AppIdWrapper<F> {
-    const fn new(inner: F, app: &'static str) -> Self { Self { inner, app } }
+    const fn new(inner: F, app: &'static str) -> Self {
+        Self { inner, app }
+    }
 }
 
 impl<S, N, F> FormatEvent<S, N> for AppIdWrapper<F>
@@ -43,9 +48,12 @@ pub fn init_tracing_logging() {
     let app_format = AppIdWrapper::new(default_format, "rust-observability");
 
     let (loki_layer, task) = tracing_loki::builder()
-        .label("host", "rust-observability-host").unwrap()
-        .extra_field("pid", format!("{}", process::id())).unwrap()
-        .build_url(Url::parse("http://loki:3100").unwrap()).unwrap();
+        .label("host", "rust-observability-host")
+        .unwrap()
+        .extra_field("pid", format!("{}", process::id()))
+        .unwrap()
+        .build_url(Url::parse("http://loki:3100").unwrap())
+        .unwrap();
 
     let fmt_layer = fmt::layer()
         .fmt_fields(DefaultFields::new())
