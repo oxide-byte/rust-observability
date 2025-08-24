@@ -23,6 +23,94 @@
   "panels": [
     {
       "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "DOWN"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "UP"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 5,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Open API /api/demo",
+          "url": "http://127.0.0.1:8080/api/demo"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {},
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max(up{job=\"rust-observability\"})",
+          "legendFormat": "rust-observability",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Server Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
@@ -71,7 +159,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 0
+        "y": 3
       },
       "id": 4,
       "options": {
@@ -96,7 +184,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.0.4",
       "targets": [
         {
           "datasource": {
@@ -181,8 +269,7 @@
             "mode": "percentage",
             "steps": [
               {
-                "color": "green",
-                "value": 0
+                "color": "green"
               },
               {
                 "color": "orange",
@@ -201,7 +288,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 0
+        "y": 3
       },
       "id": 1,
       "options": {
@@ -219,7 +306,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.0.4",
       "targets": [
         {
           "datasource": {
@@ -288,8 +375,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": 0
+                "color": "green"
               },
               {
                 "color": "red",
@@ -329,7 +415,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 11
       },
       "id": 2,
       "options": {
@@ -345,7 +431,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.0.4",
       "targets": [
         {
           "datasource": {
@@ -407,7 +493,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 17
       },
       "id": 3,
       "links": [
@@ -428,7 +514,7 @@
         "sortOrder": "Descending",
         "wrapLogMessage": false
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.0.4",
       "targets": [
         {
           "datasource": {
