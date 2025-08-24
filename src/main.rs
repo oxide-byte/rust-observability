@@ -1,5 +1,5 @@
 use axum::Router;
-use rust_observability::server::observability::{render_process_metrics, render_otel_metrics, setup_observability};
+use rust_observability::server::observability::{render_process_metrics, render_otel_metrics, setup_observability, http_metrics_middleware};
 use rust_observability::api;
 use std::time::{SystemTime, UNIX_EPOCH};
 use rust_observability::server::graceful_shutdown::graceful_shutdown;
@@ -10,7 +10,7 @@ async fn main() {
     // Initialize structured logging for tracing (logs are NOT sent to Prometheus; they go to stdout)
     init_tracing_logging();
 
-    let (prometheus_layer, metric_handle) = setup_observability();
+    setup_observability();
     
     let app = Router::new()
         .merge(api::router())
@@ -23,19 +23,17 @@ async fn main() {
                     .unwrap_or(0.0);
                 println!("[scrape] /metrics requested at unix_ts={ts:.3}");
 
-                let http_metrics = metric_handle.0.render();
                 let process_metrics = render_process_metrics();
                 let otel_metrics = render_otel_metrics();
 
                 // Concatenate all non-empty groups
                 let mut parts = Vec::new();
-                if !http_metrics.is_empty() { parts.push(http_metrics); }
                 if !process_metrics.is_empty() { parts.push(process_metrics); }
                 if !otel_metrics.is_empty() { parts.push(otel_metrics); }
                 parts.join("\n")
             }),
         )
-        .layer(prometheus_layer);
+        .layer(axum::middleware::from_fn(http_metrics_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await

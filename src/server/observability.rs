@@ -1,12 +1,12 @@
-use axum_prometheus::PrometheusMetricLayer;
 use std::sync::OnceLock;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::time;
 use sysinfo::{Pid, RefreshKind, System};
 use prometheus::{Encoder, Gauge, Opts, Registry, TextEncoder};
 
-// OpenTelemetry metrics
-use opentelemetry::global;
+use axum::{response::Response, middleware::Next};
+
+use opentelemetry::{global, KeyValue};
 use opentelemetry_prometheus::PrometheusExporter;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 
@@ -14,15 +14,14 @@ static PROCESS_REGISTRY: OnceLock<Registry> = OnceLock::new();
 static CPU_USAGE_GAUGE: OnceLock<Gauge> = OnceLock::new();
 static MEMORY_RSS_GAUGE: OnceLock<Gauge> = OnceLock::new();
 static MEMORY_VMS_GAUGE: OnceLock<Gauge> = OnceLock::new();
-
-// OpenTelemetry Prometheus registry for standard metrics
 static OTEL_REGISTRY: OnceLock<Registry> = OnceLock::new();
+static HTTP_REQ_COUNTER: OnceLock<opentelemetry::metrics::Counter<u64>> = OnceLock::new();
+static HTTP_REQ_HIST_MS: OnceLock<opentelemetry::metrics::Histogram<f64>> = OnceLock::new();
 
-pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus::Handle) {
-    let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
-
+pub fn setup_observability() {
     // Initialize OpenTelemetry metrics with Prometheus exporter (standard metrics)
     setup_otel_metrics();
+    init_http_instruments();
 
     let registry = PROCESS_REGISTRY.get_or_init(Registry::new);
 
@@ -105,13 +104,11 @@ pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus
                     g.set(cpu_pct);
                 }
 
-                // sysinfo >= 0.30 returns memory in bytes already
                 let rss_bytes = proc_.memory();
                 if let Some(g) = MEMORY_RSS_GAUGE.get() {
                     g.set(rss_bytes as f64);
                 }
 
-                // Virtual memory size in bytes
                 let mut _vms_bytes_opt: Option<u64> = None;
                 if MEMORY_VMS_GAUGE.get().is_some() {
                     let v = proc_.virtual_memory();
@@ -142,8 +139,6 @@ pub fn setup_observability() -> (PrometheusMetricLayer<'static>, axum_prometheus
             }
         }
     });
-
-    (prometheus_layer, axum_prometheus::Handle(metric_handle))
 }
 
 fn setup_otel_metrics() {
@@ -162,6 +157,47 @@ fn setup_otel_metrics() {
         .build();
 
     global::set_meter_provider(provider);
+}
+
+fn init_http_instruments() {
+    let meter = global::meter("rust_observability.http");
+    let counter = meter
+        .u64_counter("http_server_requests_total")
+        .with_description("Total number of HTTP requests handled")
+        .build();
+    let hist = meter
+        .f64_histogram("http_server_request_duration_ms")
+        .with_description("HTTP server request duration in milliseconds")
+        .build();
+    let _ = HTTP_REQ_COUNTER.set(counter);
+    let _ = HTTP_REQ_HIST_MS.set(hist);
+}
+
+pub async fn http_metrics_middleware(req: axum::http::Request<axum::body::Body>, next: Next) -> Response {
+    let start = Instant::now();
+    let method = req.method().as_str().to_owned();
+    // Using raw path; matched route templates aren't available at this layer without extra setup
+    let path = req.uri().path().to_owned();
+    let res = next.run(req).await;
+    let status = res.status().as_u16();
+
+    if let Some(c) = HTTP_REQ_COUNTER.get() {
+        c.add(1, &[
+            KeyValue::new("method", method.clone()),
+            KeyValue::new("path", path.clone()),
+            KeyValue::new("status", status.to_string()),
+        ]);
+    }
+    if let Some(h) = HTTP_REQ_HIST_MS.get() {
+        let ms = start.elapsed().as_secs_f64() * 1000.0;
+        h.record(ms, &[
+            KeyValue::new("method", method),
+            KeyValue::new("path", path),
+            KeyValue::new("status", status.to_string()),
+        ]);
+    }
+
+    res
 }
 
 pub fn render_process_metrics() -> String {
