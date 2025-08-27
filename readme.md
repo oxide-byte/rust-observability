@@ -2,7 +2,17 @@
 
 ## Introduction
 
-A service that is not observed, is lost in the universe of distributed systems. This POC-project is a small sample to show how keep track on your Rust Service, build on Axum. The Service and all the infrastructure is dockerized, you can simply start up all with "docker-compose up"
+A service that is not observed, is lost in the universe of distributed systems. This POC-project is a small sample to show how keep track on your Rust Service. The Service and all the infrastructure is dockerized, you can simply start up all with "docker-compose up"
+
+The project demonstrates two methods of log collection:
+
+1.  Via `tracing-loki` directly from the application.
+
+2.  Via Promtail scraping Docker logs.
+
+It also showcases a robust metrics collection system, capturing both application-level metrics (HTTP requests, handler durations) and process-level metrics (CPU, memory).
+
+The project uses a modern stack (Axum, Tokio, OpenTelemetry) and integrates the standard observability tools (Prometheus, Grafana, Loki)
 
 A small Screenshot the observed service in Grafana:
 
@@ -72,7 +82,7 @@ Notes:
 
 ## Docker-Compose
 
-Starting the application:
+Starting the application and all infrastructure components with:
 
 ```shell
 docker-compose up
