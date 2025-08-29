@@ -18,7 +18,7 @@ fn histogram() -> opentelemetry::metrics::Histogram<f64> {
             .with_description("Duration of /api/demo handler in milliseconds")
             .build()
     })
-    .clone()
+        .clone()
 }
 
 #[instrument(name = "api_demo_handler", skip_all)]

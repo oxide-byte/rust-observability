@@ -30,18 +30,18 @@ pub fn setup_observability() {
             "process_cpu_usage",
             "Process CPU usage percentage (can exceed 100% on multi-core)",
         )
-        .namespace("rust_observability"),
+            .namespace("rust_observability"),
     )
-    .expect("create cpu gauge");
+        .expect("create cpu gauge");
 
     let rss_gauge = Gauge::with_opts(
         Opts::new(
             "process_memory_rss_bytes",
             "Process resident set size (RSS) in bytes",
         )
-        .namespace("rust_observability"),
+            .namespace("rust_observability"),
     )
-    .expect("create rss gauge");
+        .expect("create rss gauge");
 
     // On macOS, virtual address space can be extremely large and misleading for RAM usage.
     // Default behavior: disable VMS metric on macOS unless explicitly enabled via env var.
@@ -67,9 +67,9 @@ pub fn setup_observability() {
                 "process_memory_virtual_bytes",
                 "Process virtual memory size (address space) in bytes; note: not resident RAM. On macOS this can be tens of GB due to reserved spaces.",
             )
-            .namespace("rust_observability"),
+                .namespace("rust_observability"),
         )
-        .expect("create vms gauge");
+            .expect("create vms gauge");
         registry
             .register(Box::new(g.clone()))
             .expect("register vms gauge");

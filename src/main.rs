@@ -1,11 +1,11 @@
 use axum::Router;
-use rust_observability::api;
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use rust_observability::server::graceful_shutdown::graceful_shutdown;
 use rust_observability::server::observability::{
-    http_metrics_middleware, render_otel_metrics, render_process_metrics, setup_observability,
+    http_metrics_middleware, setup_observability,
 };
 use rust_observability::server::tracing::init_tracing_logging;
-use std::time::{SystemTime, UNIX_EPOCH};
+use rust_observability::{api, server};
 
 #[tokio::main]
 async fn main() {
@@ -15,30 +15,10 @@ async fn main() {
     setup_observability();
 
     let app = Router::new()
+        .layer(OtelInResponseLayer::default()) // Contains no Spawn:
+        .merge(server::router())
+        .layer(OtelAxumLayer::default()) // Contains Spawn: "_spans":["api_demo_handler"]
         .merge(api::router())
-        .route(
-            "/metrics",
-            axum::routing::get(move || async move {
-                let ts = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_secs_f64())
-                    .unwrap_or(0.0);
-                println!("[scrape] /metrics requested at unix_ts={ts:.3}");
-
-                let process_metrics = render_process_metrics();
-                let otel_metrics = render_otel_metrics();
-
-                // Concatenate all non-empty groups
-                let mut parts = Vec::new();
-                if !process_metrics.is_empty() {
-                    parts.push(process_metrics);
-                }
-                if !otel_metrics.is_empty() {
-                    parts.push(otel_metrics);
-                }
-                parts.join("\n")
-            }),
-        )
         .layer(axum::middleware::from_fn(http_metrics_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
