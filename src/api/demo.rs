@@ -5,7 +5,7 @@ use opentelemetry::KeyValue;
 use rand::Rng;
 use std::time::Instant;
 use tokio::time::{sleep, Duration};
-use tracing::{info, instrument};
+use tracing::{event, info, instrument, span, Level};
 
 // Create/get a histogram once per process. The underlying meter provider is set up in server::observability.
 fn histogram() -> opentelemetry::metrics::Histogram<f64> {
@@ -48,7 +48,15 @@ pub async fn handler() -> impl IntoResponse {
         ],
     );
 
+    // Add a custom SPAN:
+    let span = span!(Level::INFO, "CUSTOM_SPAN");
+    let _enter = span.enter();
+
+    // Send message
     info!(delay_ms, status = status.as_u16(), "Handled /api/demo");
+
+    // Send structured Data
+    event!(Level::INFO, lights = "off", doors = "closed");
 
     (status, format!("demo: {delay_ms} ms\n"))
 }
